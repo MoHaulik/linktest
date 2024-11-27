@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Launch Demo</title>
+    <style>
+        /* Optional: Center the button on the page */
+        body {
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+
+        /* Style the button */
+        .launch-button {
+            padding: 15px 30px;
+            font-size: 16px;
+            color: #ffffff;
+            background-color: #0078D7; /* Meta Quest brand color */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .launch-button:hover {
+            background-color: #005a9e;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Button to open the URL on Meta Quest headset -->
+    <button class="launch-button" onclick="sendLinkToQuest('https://mohaulik.github.io/NXTtestbuild/')">
+        Open on Quest
+    </button>
+
+    <script>
+        /**
+         * Sends a given URL to the Meta Quest headset using Web Launch.
+         *
+         * @param {string} linkUrl - The URL to open on the Quest headset.
+         */
+        function sendLinkToQuest(linkUrl) {
+            // Ensure the URL uses HTTPS
+            if (!linkUrl.startsWith('https://')) {
+                alert('Error: The URL must start with "https://".');
+                return;
+            }
+
+            // Encode the URL using UTF-8 encoding
+            const encodedUrl = encodeURIComponent(linkUrl);
+
+            // Construct the Web Launch endpoint URL
+            const webLaunchEndpoint = `https://www.oculus.com/open_url/?url=${encodedUrl}`;
+
+            // Redirect the user to the Web Launch endpoint
+            window.location.href = webLaunchEndpoint;
+        }
+    </script>
+
+</body>
+</html>
