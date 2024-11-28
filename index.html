@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Web Launch Demo</title>
     <style>
-        /* Optional: Center the button on the page */
+        /* Center the button on the page */
         body {
             display: flex;
             height: 100vh;
@@ -23,17 +23,24 @@
             border-radius: 5px;
             cursor: pointer;
             text-decoration: none;
+            display: none; /* Initially hidden */
+        }
+
+        .launch-button.visible {
+            display: inline-block; /* Show when visible */
         }
 
         .launch-button:hover {
             background-color: #005a9e;
         }
     </style>
+    <!-- Include UAParser.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
 </head>
 <body>
 
     <!-- Button to open the URL on Meta Quest headset -->
-    <button class="launch-button" onclick="sendLinkToQuest('https://mohaulik.github.io/NXTtestbuild/')">
+    <button id="openOnQuestButton" class="launch-button" aria-label="Open this website on your Meta Quest headset">
         Open on Quest
     </button>
 
@@ -59,6 +66,50 @@
             // Redirect the user to the Web Launch endpoint
             window.location.href = webLaunchEndpoint;
         }
+
+        /**
+         * Detects if the current device is a Meta Quest headset using UAParser.js.
+         *
+         * @returns {boolean} - True if the device is Quest, false otherwise.
+         */
+        function isQuestHeadset() {
+            const parser = new UAParser();
+            const result = parser.getResult();
+            const browserName = result.browser.name || '';
+            const deviceModel = result.device.model || '';
+
+            console.log('Parsed User-Agent:', result);
+
+            // Check for OculusBrowser or device model containing 'Quest'
+            const isOculusBrowser = browserName.includes('OculusBrowser');
+            const isQuestDevice = deviceModel.includes('Quest');
+
+            console.log('Is OculusBrowser:', isOculusBrowser);
+            console.log('Is Quest Device:', isQuestDevice);
+
+            return isOculusBrowser || isQuestDevice;
+        }
+
+        /**
+         * Initializes the page by determining device type and toggling button visibility.
+         */
+        function initializePage() {
+            const openOnQuestButton = document.getElementById('openOnQuestButton');
+
+            if (!isQuestHeadset()) {
+                // If not on Quest headset, show the button and attach the click handler
+                openOnQuestButton.classList.add('visible');
+                openOnQuestButton.addEventListener('click', function() {
+                    sendLinkToQuest('https://mohaulik.github.io/NXTtestbuild/');
+                });
+            } else {
+                // Optionally, perform actions specific to Quest headset users here
+                console.log('Page accessed from Meta Quest headset. "Open on Quest" button is hidden.');
+            }
+        }
+
+        // Run the initialization on page load
+        window.addEventListener('DOMContentLoaded', initializePage);
     </script>
 
 </body>
