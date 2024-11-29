@@ -4,116 +4,148 @@
     <meta charset="UTF-8">
     <title>Web Launch Demo</title>
     <style>
-        /* General Styles */
         body {
             display: flex;
             height: 100vh;
             justify-content: center;
             align-items: center;
-            background-color: #000;
-            margin: 0;
+            background-color: black;
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            overflow: hidden;
         }
 
-        /* 'Open on Quest' Button Style */
-        .launch-button {
-            padding: 12px 24px;
-            font-size: 16px;
+        .styled-button {
+            position: relative;
+            padding: 10px 20px;
             background-color: rgba(255, 255, 255, 0.3);
-            color: white;
             border: none;
             border-radius: 30px;
+            font-size: 18px;
+            color: white;
             cursor: pointer;
-            display: none; /* Initially hidden */
-            transition: background-color 0.3s ease, transform 0.2s ease;
             backdrop-filter: blur(5px);
+            transition: all 1.33s ease;
+            isolation: isolate;
+            box-shadow: 0 2px 3px 1px hsl(222deg 50% 20% / 50%),
+                inset 0 -10px 20px -10px hsla(180deg, 10%, 90%, 95%);
+            transform: scale(1);
         }
 
-        .launch-button.visible {
-            display: inline-block; /* Show when visible */
+        .styled-button:hover:not(:active),
+        .styled-button.active {
+            transition-duration: 0.665s;
+            transform: scale(1.2);
+            box-shadow: 0 4px 8px -2px hsl(222deg 50% 20% / 50%),
+                inset 0 0 0 transparent;
         }
 
-        .launch-button:hover {
-            background-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-2px);
+        .styled-button:active {
+            transform: scale(1.1);
+            transition-duration: 0.665s;
+        }
+
+        .styled-button .shimmer {
+            position: absolute;
+            inset: -40px;
+            border-radius: inherit;
+            mask-image: conic-gradient(
+                from 0deg,
+                transparent 0%,
+                transparent 10%,
+                black 36%,
+                black 45%,
+                transparent 50%,
+                transparent 60%,
+                black 85%,
+                black 95%,
+                transparent 100%
+            );
+            mask-size: cover;
+            mix-blend-mode: plus-lighter;
+            animation: shimmer 1s linear infinite both;
+        }
+
+        .styled-button .shimmer::before,
+        .styled-button .shimmer::after {
+            transition: all 0.5s ease;
+            opacity: 0;
+            content: "";
+            border-radius: inherit;
+            position: absolute;
+            mix-blend-mode: color;
+            inset: 40px;
+            pointer-events: none;
+        }
+
+        .styled-button .shimmer::before {
+            box-shadow: 0 0 3px 2px hsl(222deg 20% 95%),
+                0 0 7px 4px hsl(222deg 20% 80%),
+                0 0 13px 4px hsl(222deg 50% 70%),
+                0 0 25px 5px hsl(222deg 100% 70%);
+            z-index: -1;
+        }
+
+        .styled-button .shimmer::after {
+            box-shadow: inset 0 0 0 1px hsl(222deg 70% 95%),
+                inset 0 0 2px 1px hsl(222deg 100% 80%),
+                inset 0 0 5px 2px hsl(222deg 100% 70%);
+            z-index: 2;
+        }
+
+        .styled-button .text {
+            color: white;
+        }
+
+        @keyframes shimmer {
+            0% {
+                --shimmer: 0deg;
+            }
+            100% {
+                --shimmer: 360deg;
+            }
         }
     </style>
-    <!-- Include UAParser.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
 </head>
 <body>
 
-    <!-- Button to open the URL on Meta Quest headset -->
-    <button id="openOnQuestButton" class="launch-button" aria-label="Open this website on your Meta Quest headset">
-        Open on Quest
+    <button id="openOnQuestButton" class="styled-button">
+        <span class="text">Open on Quest</span>
+        <div class="shimmer"></div>
     </button>
 
     <script>
-        /**
-         * Sends a given URL to the Meta Quest headset using Web Launch.
-         *
-         * @param {string} linkUrl - The URL to open on the Quest headset.
-         */
         function sendLinkToQuest(linkUrl) {
-            // Ensure the URL uses HTTPS
             if (!linkUrl.startsWith('https://')) {
                 alert('Error: The URL must start with "https://".');
                 return;
             }
-
-            // Encode the URL using UTF-8 encoding
             const encodedUrl = encodeURIComponent(linkUrl);
-
-            // Construct the Web Launch endpoint URL
             const webLaunchEndpoint = `https://www.oculus.com/open_url/?url=${encodedUrl}`;
-
-            // Redirect the user to the Web Launch endpoint
             window.location.href = webLaunchEndpoint;
         }
 
-        /**
-         * Detects if the current device is a Meta Quest headset using UAParser.js.
-         *
-         * @returns {boolean} - True if the device is Quest, false otherwise.
-         */
         function isQuestHeadset() {
             const parser = new UAParser();
             const result = parser.getResult();
             const browserName = result.browser.name || '';
             const deviceModel = result.device.model || '';
-
-            console.log('Parsed User-Agent:', result);
-
-            // Check for OculusBrowser or device model containing 'Quest'
             const isOculusBrowser = browserName.includes('OculusBrowser');
             const isQuestDevice = deviceModel.includes('Quest');
-
-            console.log('Is OculusBrowser:', isOculusBrowser);
-            console.log('Is Quest Device:', isQuestDevice);
-
             return isOculusBrowser || isQuestDevice;
         }
 
-        /**
-         * Initializes the page by determining device type and toggling button visibility.
-         */
         function initializePage() {
             const openOnQuestButton = document.getElementById('openOnQuestButton');
 
             if (!isQuestHeadset()) {
-                // If not on Quest headset, show the button and attach the click handler
-                openOnQuestButton.classList.add('visible');
                 openOnQuestButton.addEventListener('click', function() {
                     sendLinkToQuest('https://mohaulik.github.io/NXTtestbuild/');
                 });
             } else {
-                // Optionally, perform actions specific to Quest headset users here
-                console.log('Page accessed from Meta Quest headset. "Open on Quest" button is hidden.');
+                console.log('Page accessed from Meta Quest headset.');
             }
         }
 
-        // Run the initialization on page load
         window.addEventListener('DOMContentLoaded', initializePage);
     </script>
 
