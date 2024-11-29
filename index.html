@@ -4,26 +4,30 @@
     <meta charset="UTF-8">
     <title>Web Launch Demo</title>
     <style>
-        /* Center the button on the page */
+        /* General Styles */
         body {
             display: flex;
             height: 100vh;
             justify-content: center;
             align-items: center;
-            background-color: #f0f0f0;
+            background-color: #000;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
         }
 
-        /* Style the button */
+        /* 'Open on Quest' Button Style */
         .launch-button {
-            padding: 15px 30px;
+            padding: 12px 24px;
             font-size: 16px;
-            color: #ffffff;
-            background-color: #0078D7; /* Meta Quest brand color */
+            background-color: rgba(255, 255, 255, 0.3);
+            color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 30px;
             cursor: pointer;
-            text-decoration: none;
             display: none; /* Initially hidden */
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            backdrop-filter: blur(5px);
         }
 
         .launch-button.visible {
@@ -31,7 +35,8 @@
         }
 
         .launch-button:hover {
-            background-color: #005a9e;
+            background-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
         }
     </style>
     <!-- Include UAParser.js -->
