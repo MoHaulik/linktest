@@ -10,25 +10,32 @@
 
     <style>
         html, body {
-            margin: 0; 
-            padding: 0; 
-            width: 100%; 
-            height: 100%; 
-            overflow: hidden; 
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
             -webkit-user-drag: none;
-            background: black;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
         }
 
-        /* Position a fullscreen canvas behind everything for the dynamic sky */
+        /* Background canvas */
         #bgCanvas {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
             z-index: -1;
-            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Main container */
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
         }
 
         .input-container {
@@ -38,7 +45,7 @@
             width: 400px;
             margin-bottom: 30px;
             position: relative;
-            margin-top: 20vh;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.5);
         }
 
         .drop-area {
@@ -122,6 +129,7 @@
             box-shadow: 0 2px 3px 1px hsl(222deg 50% 20% / 50%),
                 inset 0 -10px 20px -10px hsla(180deg, 10%, 90%, 95%);
             transform: scale(1);
+            text-shadow: 0 0 5px white, 0 0 10px white;
         }
 
         .styled-button:hover:not(:active),
@@ -186,10 +194,7 @@
         }
 
         .styled-button .text {
-            background: linear-gradient(90deg, #ffffff, #00ffff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: bold;
+            color: white;
         }
 
         @keyframes shimmer {
@@ -200,11 +205,26 @@
                 --shimmer: 360deg;
             }
         }
+
+        .input-instructions {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.9);
+        }
+
+        .headline {
+            font-size: 32px;
+            margin-bottom: 40px;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8);
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
 </head>
 <body>
     <canvas id="bgCanvas"></canvas>
+    <div class="headline">Explore the Infinite</div>
+    <div class="input-instructions">Enter or Drop a URL to Open on Your Quest</div>
     <div class="input-container">
         <div class="drop-area" id="dropArea">
             <input type="text" id="urlInput" placeholder="Type or drop a URL" autocomplete="off" />
@@ -217,10 +237,9 @@
     </div>
 
     <script>
-        // ==============================
-        // Recent URLs Logic
-        // ==============================
+        // Utility to manage recent URLs in localStorage
         const RECENT_URLS_KEY = 'recentUrls';
+
         function loadRecentUrls() {
             let urls = localStorage.getItem(RECENT_URLS_KEY);
             if (urls) {
@@ -248,23 +267,8 @@
             localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(urls));
         }
 
-        // ==============================
-        // Quest Handling
-        // ==============================
-        function isQuestHeadset() {
-            const parser = new UAParser();
-            const result = parser.getResult();
-            const browserName = result.browser.name || '';
-            const deviceModel = result.device.model || '';
-            const isOculusBrowser = browserName.includes('OculusBrowser');
-            const isQuestDevice = deviceModel.includes('Quest');
-            return isOculusBrowser || isQuestDevice;
-        }
-
-        // ==============================
-        // Send URL to Quest
-        // ==============================
         function sendLinkToQuest(linkUrl) {
+            // Ensure URL starts with https://
             let finalUrl = linkUrl.trim();
             if (!finalUrl.startsWith('https://')) {
                 finalUrl = 'https://' + finalUrl.replace(/^https?:\/\//, '');
@@ -277,15 +281,23 @@
             window.location.href = webLaunchEndpoint;
         }
 
-        // ==============================
-        // Suggestions
-        // ==============================
+        function isQuestHeadset() {
+            const parser = new UAParser();
+            const result = parser.getResult();
+            const browserName = result.browser.name || '';
+            const deviceModel = result.device.model || '';
+            const isOculusBrowser = browserName.includes('OculusBrowser');
+            const isQuestDevice = deviceModel.includes('Quest');
+            return isOculusBrowser || isQuestDevice;
+        }
+
         function showSuggestions(filteredUrls) {
             const suggestionsBox = document.getElementById('suggestions');
             suggestionsBox.innerHTML = '';
             if (filteredUrls.length > 0) {
                 filteredUrls.forEach(url => {
                     const div = document.createElement('div');
+                    // Show without protocol for cleaner UI
                     div.textContent = url.replace(/^https?:\/\//, '');
                     div.addEventListener('click', () => {
                         document.getElementById('urlInput').value = url.replace(/^https?:\/\//, '');
@@ -305,6 +317,7 @@
             const openOnQuestButton = document.getElementById('openOnQuestButton');
             const suggestionsBox = document.getElementById('suggestions');
 
+            // Handle dragging over the drop area
             dropArea.addEventListener('dragover', function(e) {
                 e.preventDefault();
                 dropArea.classList.add('dragover');
@@ -314,6 +327,7 @@
                 dropArea.classList.remove('dragover');
             });
 
+            // Handle drop event - extract URL if any
             dropArea.addEventListener('drop', function(e) {
                 e.preventDefault();
                 dropArea.classList.remove('dragover');
@@ -324,6 +338,7 @@
                 }
             });
 
+            // Handle typing and show recent URLs that match
             urlInput.addEventListener('input', () => {
                 const inputVal = urlInput.value.trim().toLowerCase();
                 const recentUrls = loadRecentUrls();
@@ -331,6 +346,7 @@
                 showSuggestions(filtered);
             });
 
+            // Hide suggestions when input loses focus (after short delay to allow click)
             urlInput.addEventListener('blur', () => {
                 setTimeout(() => {
                     suggestionsBox.classList.remove('visible');
@@ -349,11 +365,9 @@
             if (isQuestHeadset()) {
                 console.log('Page accessed from Meta Quest headset.');
             }
-
-            // Start the WebGL background
-            initWebGLBackground();
         }
 
+        // Force reload if page was restored from cache (like back button)
         window.onpageshow = function(event) {
             if (event.persisted) {
                 window.location.reload();
@@ -362,106 +376,108 @@
 
         window.addEventListener('DOMContentLoaded', initializePage);
 
-        // ==============================
-        // WebGL Dynamic Sky Background
-        // ==============================
-        function initWebGLBackground() {
+
+
+        // ===== WebGL Background Shader Code =====
+        // The following code sets up a WebGL context and renders the provided
+        // fractal sky-like shader as the background.
+
+        const vertSrc = `
+        attribute vec2 a_position;
+        void main() {
+            gl_Position = vec4(a_position, 0.0, 1.0);
+        }
+        `;
+
+        // The fragment shader is inspired by the provided code snippet.
+        // Adjusted for a functional demonstration.
+        // This shader is somewhat abstract and may produce a dynamic,
+        // evolving pattern that resembles a surreal sky.
+        const fragSrc = `
+        precision highp float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+
+        // Convert HSV to RGB
+        vec3 hsv(float h, float s, float v){
+            float c = v * s;
+            float x = c * (1.0 - abs(mod(h * 6.0, 2.0) - 1.0));
+            vec3 rgb = vec3(0.0);
+            if (h * 6.0 < 1.0) rgb = vec3(c, x, 0.0);
+            else if (h * 6.0 < 2.0) rgb = vec3(x, c, 0.0);
+            else if (h * 6.0 < 3.0) rgb = vec3(0.0, c, x);
+            else if (h * 6.0 < 4.0) rgb = vec3(0.0, x, c);
+            else if (h * 6.0 < 5.0) rgb = vec3(x, 0.0, c);
+            else rgb = vec3(c, 0.0, x);
+            rgb += v - c;
+            return rgb;
+        }
+
+        mat3 rotate3D(float angle, vec3 axis) {
+            axis = normalize(axis);
+            float s = sin(angle);
+            float c = cos(angle);
+            float oc = 1.0 - c;
+
+            return mat3(
+                oc*axis.x*axis.x + c,       oc*axis.x*axis.y - axis.z*s, oc*axis.z*axis.x + axis.y*s,
+                oc*axis.y*axis.x + axis.z*s,oc*axis.y*axis.y + c,        oc*axis.y*axis.z - axis.x*s,
+                oc*axis.z*axis.x - axis.y*s,oc*axis.z*axis.y + axis.x*s,oc*axis.z*axis.z + c
+            );
+        }
+
+        void main(){
+            vec2 FC = gl_FragCoord.xy / u_resolution;
+            vec2 r = u_resolution;
+            float t = u_time;
+
+            vec3 o = vec3(0.);
+            float i=0., g=0., e=0., s=0.;
+
+            // Loop creating a fractal-like pattern
+            for(; i<99.; i++){
+              // Add subtle color variation
+              o.rgb += .01 - hsv(0.1, g*.013, s/200.);
+
+              vec3 p = vec3((FC - 0.5)*r.y*7.0 + vec2(-2.0,8.0), g+4.0);
+              p = p * rotate3D(sin(t*.5)*.005 - 1.8, vec3(0.,9.,-1.));
+
+              s=1.8;
+              for(int j=0;j<19;j++){
+                p = vec3(.05,4.,-1.) - abs(abs(p)*e - vec3(3.1,4.,2.9));
+                float denom = dot(p, p*0.5);
+                if (denom == 0.0) denom = 1.0;
+                s *= (e = 7.1/denom);
+              }
+
+              g += p.y/s;
+              s = log(s)/exp(e);
+            }
+
+            gl_FragColor = vec4(o,1.0);
+        }
+        `;
+
+        (function() {
             const canvas = document.getElementById('bgCanvas');
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if (!gl) return;
+            const gl = canvas.getContext('webgl');
+            if(!gl) return;
 
             // Resize canvas
             function resize() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-                gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+                gl.viewport(0,0, canvas.width, canvas.height);
             }
             window.addEventListener('resize', resize);
             resize();
 
-            const vertexShaderSource = `
-                attribute vec2 a_position;
-                void main() {
-                    gl_Position = vec4(a_position, 0.0, 1.0);
-                }
-            `;
-
-            // The following fragment shader is adapted to use the provided snippet.
-            // We'll define a procedural sky. We'll define FC = frag coord, r = resolution,
-            // t = time, hsv, rotate3D. We'll try to remain faithful to the snippet.
-
-            const fragmentShaderSource = `
-                precision highp float;
-                uniform vec2 u_resolution;
-                uniform float u_time;
-                
-                // HSV to RGB
-                vec3 hsv(float h, float s, float v) {
-                    vec3 c = vec3(h*6.0, s, v);
-                    vec3 rgb = clamp(abs(mod(vec3(c.x, c.x-2.0, c.x-4.0),
-                                             6.0)-3.0)-1.0,
-                                     0.0,
-                                     1.0);
-                    rgb = rgb*rgb*(3.0-2.0*rgb); 
-                    return v * mix(vec3(1.0), rgb, s);
-                }
-
-                // Simple rotation in 3D around a given axis
-                mat3 rotate3D(float angle, vec3 axis){
-                    axis = normalize(axis);
-                    float s = sin(angle), c = cos(angle), oc = 1.0 - c;
-                    return mat3(
-                        oc*axis.x*axis.x + c,         oc*axis.x*axis.y - axis.z*s, oc*axis.z*axis.x + axis.y*s,
-                        oc*axis.y*axis.x + axis.z*s,  oc*axis.y*axis.y + c,        oc*axis.y*axis.z - axis.x*s,
-                        oc*axis.z*axis.x - axis.y*s,  oc*axis.y*axis.z + axis.x*s, oc*axis.z*axis.z + c
-                    );
-                }
-
-                void main() {
-                    vec2 FC = gl_FragCoord.xy / u_resolution.xy;
-                    vec2 r = u_resolution;
-                    float t = u_time*0.5;
-                    
-                    vec4 o = vec4(0.0);
-                    float i=0.0,g=0.0,e=0.0,s=0.0;
-                    for(; i<99.0; i++){
-                        // Original snippet logic:
-                        // o.rgb += .01 - hsv(.1, g*.013, s/2e2)
-                        // Seems likely intended as:
-                        // o.rgb += 0.01 * hsv(0.1, g*0.013, s/200.0);
-                        // We'll assume that was the intention.
-
-                        // Compute p:
-                        vec3 p=vec3((FC - 0.5)*r.y*7.0/r.y+vec2(-2.0,8.0),g+4.0);
-                        p.xz = (rotate3D(sin(t)*0.005 - 1.8, vec3(0.0,9.0,-1.0)) * p).xz;
-                        p.y  = (rotate3D(sin(t)*0.005 - 1.8, vec3(0.0,9.0,-1.0)) * p).y;
-
-                        s=1.8; 
-                        for (int j=0; j<19; j++){
-                            p=vec3(0.05,4.0,-1.0)-abs(abs(p)*e-vec3(3.1,4.0,2.9));
-                            float d = dot(p,p*0.5);
-                            e = 7.1/d;
-                            s *= e;
-                        }
-
-                        g += p.y/s; 
-                        s = log(s)/exp(e);
-
-                        o.rgb += 0.01 * hsv(0.1, g*0.013, s/200.0);
-                    }
-
-                    // Soft gradient
-                    o.rgb = mix(vec3(0.05,0.1,0.2), o.rgb, 0.5);
-
-                    gl_FragColor = vec4(o.rgb, 1.0);
-                }
-            `;
-
-            function createShader(gl, type, source) {
+            // Compile shaders
+            function compileShader(src, type) {
                 const shader = gl.createShader(type);
-                gl.shaderSource(shader, source);
+                gl.shaderSource(shader, src);
                 gl.compileShader(shader);
-                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                     console.error(gl.getShaderInfoLog(shader));
                     gl.deleteShader(shader);
                     return null;
@@ -469,43 +485,48 @@
                 return shader;
             }
 
-            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-
+            const vs = compileShader(vertSrc, gl.VERTEX_SHADER);
+            const fs = compileShader(fragSrc, gl.FRAGMENT_SHADER);
             const program = gl.createProgram();
-            gl.attachShader(program, vertexShader);
-            gl.attachShader(program, fragmentShader);
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
             gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            if(!gl.getProgramParameter(program, gl.LINK_STATUS)) {
                 console.error(gl.getProgramInfoLog(program));
             }
 
-            const a_position = gl.getAttribLocation(program, 'a_position');
-            const u_resolution = gl.getUniformLocation(program, 'u_resolution');
-            const u_time = gl.getUniformLocation(program, 'u_time');
+            gl.useProgram(program);
 
+            const u_time = gl.getUniformLocation(program, 'u_time');
+            const u_resolution = gl.getUniformLocation(program, 'u_resolution');
+
+            const positionLoc = gl.getAttribLocation(program, 'a_position');
             const buffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-            const vertices = new Float32Array([
+            // Fullscreen quad
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
                 -1, -1,
                  1, -1,
                 -1,  1,
                  1,  1
-            ]);
-            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            ]), gl.STATIC_DRAW);
+            gl.enableVertexAttribArray(positionLoc);
+            gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
 
-            gl.useProgram(program);
-            gl.enableVertexAttribArray(a_position);
-            gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+            let start = performance.now();
+            function render() {
+                const now = performance.now();
+                const time = (now - start)*0.001;
 
-            function render(time) {
-                gl.uniform2f(u_resolution, gl.drawingBufferWidth, gl.drawingBufferHeight);
-                gl.uniform1f(u_time, time * 0.001); // convert ms to seconds
+                gl.uniform1f(u_time, time);
+                gl.uniform2f(u_resolution, canvas.width, canvas.height);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
                 requestAnimationFrame(render);
             }
-            requestAnimationFrame(render);
-        }
+
+            render();
+        })();
     </script>
 </body>
 </html>
