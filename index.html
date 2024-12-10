@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Web Launch Demo</title>
+    <!-- Prevent caching so that returning to the site refreshes -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
     <style>
         body {
             display: flex;
@@ -22,6 +27,7 @@
             align-items: center;
             width: 400px;
             margin-bottom: 30px;
+            position: relative;
         }
 
         .drop-area {
@@ -61,6 +67,33 @@
             color: white;
             font-size: 18px;
             font-family: inherit;
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 110px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 999;
+        }
+
+        .suggestions.visible {
+            display: block;
+        }
+
+        .suggestions div {
+            padding: 10px;
+            font-size: 16px;
+            color: black;
+            cursor: pointer;
+        }
+
+        .suggestions div:hover {
+            background: rgba(0,0,0,0.1);
         }
 
         .styled-button {
@@ -154,7 +187,6 @@
             }
         }
 
-        /* Prevent the entire page from being draggable */
         html, body {
             -webkit-user-drag: none;
         }
@@ -162,10 +194,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
 </head>
 <body>
+
     <div class="input-container">
         <div class="drop-area" id="dropArea">
-            <input type="text" id="urlInput" placeholder="Drag a link here or type a URL (https://...)" />
+            <input type="text" id="urlInput" placeholder="Type or drop a URL" autocomplete="off" />
         </div>
+        <div class="suggestions" id="suggestions"></div>
         <button id="openOnQuestButton" class="styled-button">
             <span class="text">Open on Quest</span>
             <div class="shimmer"></div>
@@ -173,13 +207,51 @@
     </div>
 
     <script>
-        function sendLinkToQuest(linkUrl) {
-            if (!linkUrl.startsWith('https://')) {
-                alert('Error: The URL must start with "https://".');
-                return;
+        // Utility to manage recent URLs in localStorage
+        const RECENT_URLS_KEY = 'recentUrls';
+
+        function loadRecentUrls() {
+            let urls = localStorage.getItem(RECENT_URLS_KEY);
+            if (urls) {
+                try {
+                    urls = JSON.parse(urls);
+                } catch (e) {
+                    urls = [];
+                }
+            } else {
+                urls = [];
             }
-            const encodedUrl = encodeURIComponent(linkUrl);
+            return urls;
+        }
+
+        function saveRecentUrl(newUrl) {
+            let urls = loadRecentUrls();
+
+            // Remove if already exists to re-insert at the front
+            urls = urls.filter(u => u !== newUrl);
+
+            // Add to front
+            urls.unshift(newUrl);
+
+            // Keep only last 3
+            if (urls.length > 3) {
+                urls = urls.slice(0, 3);
+            }
+
+            localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(urls));
+        }
+
+        function sendLinkToQuest(linkUrl) {
+            // Ensure URL starts with https://
+            let finalUrl = linkUrl.trim();
+            if (!finalUrl.startsWith('https://')) {
+                finalUrl = 'https://' + finalUrl.replace(/^https?:\/\//, '');
+            }
+            const encodedUrl = encodeURIComponent(finalUrl);
             const webLaunchEndpoint = `https://www.oculus.com/open_url/?url=${encodedUrl}`;
+            // Save to recent URLs
+            saveRecentUrl(finalUrl);
+            // Navigate
             window.location.href = webLaunchEndpoint;
         }
 
@@ -193,10 +265,30 @@
             return isOculusBrowser || isQuestDevice;
         }
 
+        function showSuggestions(filteredUrls) {
+            const suggestionsBox = document.getElementById('suggestions');
+            suggestionsBox.innerHTML = '';
+            if (filteredUrls.length > 0) {
+                filteredUrls.forEach(url => {
+                    const div = document.createElement('div');
+                    div.textContent = url.replace(/^https?:\/\//, '');
+                    div.addEventListener('click', () => {
+                        document.getElementById('urlInput').value = url.replace(/^https?:\/\//, '');
+                        suggestionsBox.classList.remove('visible');
+                    });
+                    suggestionsBox.appendChild(div);
+                });
+                suggestionsBox.classList.add('visible');
+            } else {
+                suggestionsBox.classList.remove('visible');
+            }
+        }
+
         function initializePage() {
             const dropArea = document.getElementById('dropArea');
             const urlInput = document.getElementById('urlInput');
             const openOnQuestButton = document.getElementById('openOnQuestButton');
+            const suggestionsBox = document.getElementById('suggestions');
 
             // Handle dragging over the drop area
             dropArea.addEventListener('dragover', function(e) {
@@ -214,8 +306,24 @@
                 dropArea.classList.remove('dragover');
                 const data = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
                 if (data) {
-                    urlInput.value = data;
+                    // Remove protocol if present for cleaner UI
+                    urlInput.value = data.replace(/^https?:\/\//, '');
                 }
+            });
+
+            // Handle typing and show recent URLs that match
+            urlInput.addEventListener('input', () => {
+                const inputVal = urlInput.value.trim().toLowerCase();
+                const recentUrls = loadRecentUrls();
+                const filtered = recentUrls.filter(u => u.toLowerCase().includes(inputVal));
+                showSuggestions(filtered);
+            });
+
+            // Hide suggestions when input loses focus (after short delay to allow click)
+            urlInput.addEventListener('blur', () => {
+                setTimeout(() => {
+                    suggestionsBox.classList.remove('visible');
+                }, 200);
             });
 
             openOnQuestButton.addEventListener('click', function() {
@@ -223,17 +331,21 @@
                 if (url) {
                     sendLinkToQuest(url);
                 } else {
-                    alert('Please enter or drop a valid URL starting with "https://".');
+                    alert('Please enter or drop a valid URL.');
                 }
             });
 
-            // We still do a check for if it's accessed from Quest headset
-            // In this example, the button will always attempt to open the URL.
-            // If we only want to open a default link when not on Quest, modify logic accordingly.
             if (isQuestHeadset()) {
                 console.log('Page accessed from Meta Quest headset.');
             }
         }
+
+        // Force reload if page was restored from cache (like back button)
+        window.onpageshow = function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        };
 
         window.addEventListener('DOMContentLoaded', initializePage);
     </script>
