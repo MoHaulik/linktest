@@ -16,21 +16,10 @@
             overflow: hidden;
             font-family: 'Helvetica Neue', Arial, sans-serif;
             -webkit-user-drag: none;
-            user-select: none;
-        }
-
-        /* The canvas for the dynamic background */
-        #bgCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-            display: block;
         }
 
         body {
+            /* The background will be handled by a canvas. */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -42,7 +31,9 @@
             flex-direction: column;
             align-items: center;
             width: 400px;
+            margin-bottom: 30px;
             position: relative;
+            z-index: 1;
         }
 
         .drop-area {
@@ -85,7 +76,7 @@
         }
 
         .drop-area input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.8);
         }
 
         .suggestions {
@@ -130,7 +121,7 @@
             box-shadow: 0 2px 3px 1px hsl(222deg 50% 20% / 50%),
                 inset 0 -10px 20px -10px hsla(180deg, 10%, 90%, 95%);
             transform: scale(1);
-            margin-top: 10px;
+            text-shadow: 0 0 5px hsl(222deg 100% 70%), 0 0 10px hsl(222deg 100% 70%);
         }
 
         .styled-button:hover:not(:active),
@@ -196,25 +187,6 @@
 
         .styled-button .text {
             color: white;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-        }
-
-        /* Make the UI more engaging */
-        .input-container .drop-area input {
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        /* Add a small hint message below the input box */
-        .hint {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 14px;
-            margin-top: -10px;
-            margin-bottom: 20px;
-            text-align: center;
-            max-width: 350px;
-            line-height: 1.4;
         }
 
         @keyframes shimmer {
@@ -225,347 +197,220 @@
                 --shimmer: 360deg;
             }
         }
-    </style>
 
+        /* Canvas background behind everything */
+        #bgCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+        }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
 </head>
 <body>
 
-    <canvas id="bgCanvas"></canvas>
+<canvas id="bgCanvas"></canvas>
 
-    <div class="input-container">
-        <div class="drop-area" id="dropArea">
-            <input type="text" id="urlInput" placeholder="Type or drop a URL here" autocomplete="off" />
-        </div>
-        <div class="hint">Enter a website address and tap "Open on Quest" to load it in full on your headset. If you forget "https://", we'll add it for you!</div>
-        <div class="suggestions" id="suggestions"></div>
-        <button id="openOnQuestButton" class="styled-button">
-            <span class="text">Open on Quest</span>
-            <div class="shimmer"></div>
-        </button>
+<div class="input-container">
+    <div class="drop-area" id="dropArea">
+        <input type="text" id="urlInput" placeholder="Enter your journey's start or drop a destination link" autocomplete="off" />
     </div>
+    <div class="suggestions" id="suggestions"></div>
+    <button id="openOnQuestButton" class="styled-button">
+        <span class="text">Launch into Adventure</span>
+        <div class="shimmer"></div>
+    </button>
+</div>
 
-    <script>
-        // ----- WebGL Background (Dynamic Sky) Setup -----
-        // This shader uses a fragment shader similar in style to the snippet provided,
-        // producing a dynamic sky-like effect. It's a custom approximation since the snippet
-        // given was partial. We'll implement a fractal/hsv-based sky effect.
+<script>
+    // Background animation: A dynamic sky-like gradient.
+    // We'll create a gradient that shifts colors over time.
+    (function() {
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
 
-        const vertexShaderSource = `
-            attribute vec2 aPosition;
-            void main() {
-                gl_Position = vec4(aPosition, 0.0, 1.0);
-            }
-        `;
-
-        // We'll define a helper rotate3D and hsv conversion, and emulate the snippet.
-        // The code snippet given:
-        // for(float i,g,e,s;++i<99.;o.rgb+=.01-hsv(.1,g*.013,s/2e2)){
-        //   vec3 p=vec3((FC.xy-.5*r)/r.y*7.+vec2(-2,8),g+4.)*rotate3D(sin(t*.5)*.005-1.8,vec3(0,9,-1));
-        //   s=1.8; for(int i;i++<19;p=vec3(.05,4,-1)-abs(abs(p)*e-vec3(3.1,4,2.9))) s*=e=7.1/dot(p,p*.5); 
-        //   g+=p.y/s; s=log(s)/exp(e);
-        // }
-
-        // We'll assume FC = fragCoord/iResolution, t = iTime, r = iResolution,
-        // and reconstruct some functions.
-
-        const fragmentShaderSource = `
-            precision highp float;
-
-            uniform vec2 iResolution;
-            uniform float iTime;
-
-            // Convert HSV to RGB
-            vec3 hsv(float h, float s, float v) {
-                h = mod(h,1.0);
-                float c = v * s;
-                float x = c * (1.0 - abs(mod(h*6.0,2.0)-1.0));
-                vec3 rgb = vec3(0.0);
-                if (h < 1.0/6.0) rgb = vec3(c,x,0);
-                else if (h < 2.0/6.0) rgb = vec3(x,c,0);
-                else if (h < 3.0/6.0) rgb = vec3(0,c,x);
-                else if (h < 4.0/6.0) rgb = vec3(0,x,c);
-                else if (h < 5.0/6.0) rgb = vec3(x,0,c);
-                else rgb = vec3(c,0,x);
-                return rgb + (v - c);
-            }
-
-            // Minimal rotation around some axis
-            mat3 rotate3D(float angle, vec3 axis) {
-                axis = normalize(axis);
-                float c = cos(angle);
-                float s = sin(angle);
-                float ic = 1.0 - c;
-
-                return mat3(
-                    c+axis.x*axis.x*ic,     axis.x*axis.y*ic - axis.z*s, axis.x*axis.z*ic + axis.y*s,
-                    axis.y*axis.x*ic + axis.z*s, c+axis.y*axis.y*ic,     axis.y*axis.z*ic - axis.x*s,
-                    axis.z*axis.x*ic - axis.y*s, axis.z*axis.y*ic + axis.x*s, c+axis.z*axis.z*ic
-                );
-            }
-
-            void main() {
-                vec2 FC = gl_FragCoord.xy / iResolution.xy;
-                vec2 r = iResolution;
-                float t = iTime;
-
-                vec4 o = vec4(0.0);
-                float i,g,e,s=0.0;
-                // We'll run a loop similar to the snippet to accumulate a color
-                for(i=0.0; i<99.0; i++) {
-                    vec3 p = vec3((FC - 0.5)*r.y*7.0/r.y + vec2(-2.0,8.0), g+4.0);
-                    p = p * rotate3D(sin(t*0.5)*0.005-1.8, vec3(0.0,9.0,-1.0));
-                    s=1.8;
-                    float eTemp=0.0;
-                    vec3 ptemp = p;
-                    for(int j=0;j<19;j++){
-                        ptemp=vec3(.05,4.,-1.)-abs(abs(ptemp)*eTemp-vec3(3.1,4.,2.9));
-                        float d = dot(ptemp, ptemp*0.5);
-                        eTemp=7.1/d;
-                        s*=eTemp;
-                    }
-                    g+= ptemp.y/s;
-                    s=log(s)/exp(eTemp);
-
-                    // Accumulate some color
-                    // hsv(.1,g*.013,s/2e2) -> hue=0.1, sat=g*0.013, val=s/200.0
-                    // We clamp to keep colors in range
-                    float val = s/200.0;
-                    float sat = clamp(g*0.013,0.0,1.0);
-                    vec3 col = hsv(0.1, sat, val);
-                    o.rgb += 0.01 * col;
-                }
-
-                // A slight additional color mix for sky-like feel
-                o.rgb = mix(o.rgb, vec3(0.2,0.3,0.6), 0.2);
-
-                gl_FragColor = vec4(o.rgb,1.0);
-            }
-        `;
-
-        function createShader(gl, type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error('Shader compile error: ', gl.getShaderInfoLog(shader));
-                gl.deleteShader(shader);
-                return null;
-            }
-            return shader;
+        let width, height;
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
         }
+        window.addEventListener('resize', resize);
+        resize();
 
-        function createProgram(gl, vsSource, fsSource) {
-            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
-            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
-            const program = gl.createProgram();
-            gl.attachShader(program, vertexShader);
-            gl.attachShader(program, fragmentShader);
-            gl.linkProgram(program);
-            if(!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                console.error('Program link error: ', gl.getProgramInfoLog(program));
-                gl.deleteProgram(program);
-                return null;
-            }
-            return program;
+        let t = 0;
+        function animate() {
+            t += 0.01;
+            // We'll create a dynamic radial gradient that changes hue over time
+            const cx = width / 2;
+            const cy = height / 2;
+            const gradient = ctx.createRadialGradient(cx, cy, Math.min(width, height)*0.1, cx, cy, Math.max(width, height)*0.7);
+
+            // Compute colors based on t
+            // We'll shift hue over time for a sky-like effect
+            let hue1 = (t*20) % 360;
+            let hue2 = (t*10 + 180) % 360;
+            let hue3 = (t*30 + 90) % 360;
+
+            gradient.addColorStop(0, `hsl(${hue1}, 60%, 60%)`);
+            gradient.addColorStop(0.5, `hsl(${hue2}, 70%, 50%)`);
+            gradient.addColorStop(1, `hsl(${hue3}, 80%, 40%)`);
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            requestAnimationFrame(animate);
         }
+        animate();
+    })();
 
-        let gl, program, iResolutionLocation, iTimeLocation;
-        let startTime;
+    // Utility to manage recent URLs in localStorage
+    const RECENT_URLS_KEY = 'recentUrls';
 
-        function initWebGLBackground() {
-            const canvas = document.getElementById('bgCanvas');
-            gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if(!gl) {
-                console.warn('WebGL not supported, background will be plain.');
-                return;
-            }
-
-            // Create and link program
-            program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
-            gl.useProgram(program);
-
-            // Create a fullscreen quad
-            const positionBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            const vertices = new Float32Array([
-                -1,-1, 1,-1, -1,1,
-                -1,1, 1,-1, 1,1
-            ]);
-            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-            const aPosition = gl.getAttribLocation(program, 'aPosition');
-            gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(aPosition);
-
-            // Uniforms
-            iResolutionLocation = gl.getUniformLocation(program, 'iResolution');
-            iTimeLocation = gl.getUniformLocation(program, 'iTime');
-
-            startTime = Date.now();
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
-            requestAnimationFrame(render);
-        }
-
-        function resizeCanvas() {
-            const canvas = document.getElementById('bgCanvas');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            gl.viewport(0,0,canvas.width, canvas.height);
-        }
-
-        function render() {
-            const currentTime = (Date.now() - startTime) / 1000.0;
-            gl.uniform2f(iResolutionLocation, gl.drawingBufferWidth, gl.drawingBufferHeight);
-            gl.uniform1f(iTimeLocation, currentTime);
-
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-            requestAnimationFrame(render);
-        }
-
-        // ----- URL Management and UI Logic -----
-        const RECENT_URLS_KEY = 'recentUrls';
-
-        function loadRecentUrls() {
-            let urls = localStorage.getItem(RECENT_URLS_KEY);
-            if (urls) {
-                try {
-                    urls = JSON.parse(urls);
-                } catch (e) {
-                    urls = [];
-                }
-            } else {
+    function loadRecentUrls() {
+        let urls = localStorage.getItem(RECENT_URLS_KEY);
+        if (urls) {
+            try {
+                urls = JSON.parse(urls);
+            } catch (e) {
                 urls = [];
             }
-            return urls;
+        } else {
+            urls = [];
+        }
+        return urls;
+    }
+
+    function saveRecentUrl(newUrl) {
+        let urls = loadRecentUrls();
+
+        // Remove if already exists to re-insert at the front
+        urls = urls.filter(u => u !== newUrl);
+
+        // Add to front
+        urls.unshift(newUrl);
+
+        // Keep only last 3
+        if (urls.length > 3) {
+            urls = urls.slice(0, 3);
         }
 
-        function saveRecentUrl(newUrl) {
-            let urls = loadRecentUrls();
+        localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(urls));
+    }
 
-            // Remove if already exists to re-insert at the front
-            urls = urls.filter(u => u !== newUrl);
-
-            // Add to front
-            urls.unshift(newUrl);
-
-            // Keep only last 3
-            if (urls.length > 3) {
-                urls = urls.slice(0, 3);
-            }
-
-            localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(urls));
+    function sendLinkToQuest(linkUrl) {
+        // Ensure URL starts with https://
+        let finalUrl = linkUrl.trim();
+        if (!finalUrl.startsWith('https://')) {
+            finalUrl = 'https://' + finalUrl.replace(/^https?:\/\//, '');
         }
+        const encodedUrl = encodeURIComponent(finalUrl);
+        const webLaunchEndpoint = `https://www.oculus.com/open_url/?url=${encodedUrl}`;
+        // Save to recent URLs
+        saveRecentUrl(finalUrl);
+        // Navigate
+        window.location.href = webLaunchEndpoint;
+    }
 
-        function sendLinkToQuest(linkUrl) {
-            // Ensure URL starts with https://
-            let finalUrl = linkUrl.trim();
-            if (!finalUrl.startsWith('https://')) {
-                finalUrl = 'https://' + finalUrl.replace(/^https?:\/\//, '');
-            }
-            const encodedUrl = encodeURIComponent(finalUrl);
-            const webLaunchEndpoint = `https://www.oculus.com/open_url/?url=${encodedUrl}`;
-            // Save to recent URLs
-            saveRecentUrl(finalUrl);
-            // Navigate
-            window.location.href = webLaunchEndpoint;
-        }
+    function isQuestHeadset() {
+        const parser = new UAParser();
+        const result = parser.getResult();
+        const browserName = result.browser.name || '';
+        const deviceModel = result.device.model || '';
+        const isOculusBrowser = browserName.includes('OculusBrowser');
+        const isQuestDevice = deviceModel.includes('Quest');
+        return isOculusBrowser || isQuestDevice;
+    }
 
-        function isQuestHeadset() {
-            const parser = new UAParser();
-            const result = parser.getResult();
-            const browserName = result.browser.name || '';
-            const deviceModel = result.device.model || '';
-            const isOculusBrowser = browserName.includes('OculusBrowser');
-            const isQuestDevice = deviceModel.includes('Quest');
-            return isOculusBrowser || isQuestDevice;
-        }
-
-        function showSuggestions(filteredUrls) {
-            const suggestionsBox = document.getElementById('suggestions');
-            suggestionsBox.innerHTML = '';
-            if (filteredUrls.length > 0) {
-                filteredUrls.forEach(url => {
-                    const div = document.createElement('div');
-                    div.textContent = url.replace(/^https?:\/\//, '');
-                    div.addEventListener('click', () => {
-                        document.getElementById('urlInput').value = url.replace(/^https?:\/\//, '');
-                        suggestionsBox.classList.remove('visible');
-                    });
-                    suggestionsBox.appendChild(div);
-                });
-                suggestionsBox.classList.add('visible');
-            } else {
-                suggestionsBox.classList.remove('visible');
-            }
-        }
-
-        function initializePage() {
-            const dropArea = document.getElementById('dropArea');
-            const urlInput = document.getElementById('urlInput');
-            const openOnQuestButton = document.getElementById('openOnQuestButton');
-            const suggestionsBox = document.getElementById('suggestions');
-
-            // Handle dragging over the drop area
-            dropArea.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                dropArea.classList.add('dragover');
-            });
-
-            dropArea.addEventListener('dragleave', function() {
-                dropArea.classList.remove('dragover');
-            });
-
-            // Handle drop event - extract URL if any
-            dropArea.addEventListener('drop', function(e) {
-                e.preventDefault();
-                dropArea.classList.remove('dragover');
-                const data = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
-                if (data) {
-                    urlInput.value = data.replace(/^https?:\/\//, '');
-                }
-            });
-
-            // Handle typing and show recent URLs that match
-            urlInput.addEventListener('input', () => {
-                const inputVal = urlInput.value.trim().toLowerCase();
-                const recentUrls = loadRecentUrls();
-                const filtered = recentUrls.filter(u => u.toLowerCase().includes(inputVal));
-                showSuggestions(filtered);
-            });
-
-            // Hide suggestions when input loses focus (after short delay to allow click)
-            urlInput.addEventListener('blur', () => {
-                setTimeout(() => {
+    function showSuggestions(filteredUrls) {
+        const suggestionsBox = document.getElementById('suggestions');
+        suggestionsBox.innerHTML = '';
+        if (filteredUrls.length > 0) {
+            filteredUrls.forEach(url => {
+                const div = document.createElement('div');
+                div.textContent = url.replace(/^https?:\/\//, '');
+                div.addEventListener('click', () => {
+                    document.getElementById('urlInput').value = url.replace(/^https?:\/\//, '');
                     suggestionsBox.classList.remove('visible');
-                }, 200);
+                });
+                suggestionsBox.appendChild(div);
             });
-
-            openOnQuestButton.addEventListener('click', function() {
-                const url = urlInput.value.trim();
-                if (url) {
-                    sendLinkToQuest(url);
-                } else {
-                    alert('Please enter or drop a valid URL.');
-                }
-            });
-
-            if (isQuestHeadset()) {
-                console.log('Page accessed from Meta Quest headset.');
-            }
+            suggestionsBox.classList.add('visible');
+        } else {
+            suggestionsBox.classList.remove('visible');
         }
+    }
 
-        // Force reload if page was restored from cache (like back button)
-        window.onpageshow = function(event) {
-            if (event.persisted) {
-                window.location.reload();
-            }
-        };
+    function initializePage() {
+        const dropArea = document.getElementById('dropArea');
+        const urlInput = document.getElementById('urlInput');
+        const openOnQuestButton = document.getElementById('openOnQuestButton');
+        const suggestionsBox = document.getElementById('suggestions');
 
-        window.addEventListener('DOMContentLoaded', () => {
-            initializePage();
-            initWebGLBackground();
+        // Handle dragging over the drop area
+        dropArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropArea.classList.add('dragover');
         });
-    </script>
+
+        dropArea.addEventListener('dragleave', function() {
+            dropArea.classList.remove('dragover');
+        });
+
+        // Handle drop event - extract URL if any
+        dropArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropArea.classList.remove('dragover');
+            const data = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+            if (data) {
+                // Remove protocol if present for cleaner UI
+                urlInput.value = data.replace(/^https?:\/\//, '');
+            }
+        });
+
+        // Handle typing and show recent URLs that match
+        urlInput.addEventListener('input', () => {
+            const inputVal = urlInput.value.trim().toLowerCase();
+            const recentUrls = loadRecentUrls();
+            const filtered = recentUrls.filter(u => u.toLowerCase().includes(inputVal));
+            showSuggestions(filtered);
+        });
+
+        // Hide suggestions when input loses focus (after short delay to allow click)
+        urlInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                suggestionsBox.classList.remove('visible');
+            }, 200);
+        });
+
+        openOnQuestButton.addEventListener('click', function() {
+            const url = urlInput.value.trim();
+            if (url) {
+                sendLinkToQuest(url);
+            } else {
+                alert('Please enter or drop a valid URL.');
+            }
+        });
+
+        if (isQuestHeadset()) {
+            console.log('Page accessed from Meta Quest headset.');
+        }
+    }
+
+    // Force reload if page was restored from cache (like back button)
+    window.onpageshow = function(event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    };
+
+    window.addEventListener('DOMContentLoaded', initializePage);
+</script>
+
 </body>
 </html>
