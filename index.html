@@ -18,22 +18,20 @@
       -webkit-user-drag: none;
     }
 
-    /* =========================================
-       NEW SKY BACKGROUND + CLOUDY BLUR
-       ========================================= */
+    /* ================================
+       SKY GRADIENT & VR SIGNAL THEME
+       ================================ */
     canvas {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: linear-gradient(to bottom, #FFAFBD, #ffc3a0 20%, #fff7d4 70%, #c9ffbf 100%);
+      /* A VR-themed background gradient: */
+      background: radial-gradient(circle at 50% 50%, #222 0%, #47476b 40%, #101026 100%);
       z-index: 1;
     }
 
-    /* We'll no longer rely on separate .sky or .clouds divs,
-       everything is done in the canvas this time. */
-    
-    /* =========================================
-       UI ELEMENTS (unchanged)
-       ========================================= */
+    /* ================================
+       INPUT / BUTTON UI (unchanged)
+       ================================ */
     .input-container {
       position: absolute;
       top: 50%; left: 50%;
@@ -201,7 +199,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
 </head>
 <body>
-  <!-- Canvas for dynamic sky + flying shapes -->
+  <!-- Main canvas for VR-themed background -->
   <canvas id="canv"></canvas>
 
   <!-- Input and button UI -->
@@ -348,212 +346,26 @@
     };
 
     /*****************************************
-     *  NEW CANVAS CODE: SKY + CLOUD BLOBS + "PAPER PLANES"
+     * VR-THEMED BACKGROUND ANIMATION
      *****************************************/
+    let canvas, ctx, w, h;
+    let arcs = [];
+    const ARC_COUNT = 25;
+    let angle = 0;
 
-    // We'll create 'paper planes' with a simplified boid approach.
-    // The shapes and code are brand new, so it's ours.
-
-    class Plane {
-      constructor(x, y, z) {
-        // Position
-        this.x = x || 0;
-        this.y = y || 0;
-        this.z = z || 0;
-        // Velocity
-        this.vx = (Math.random()*2 - 1) * 0.5;
-        this.vy = (Math.random()*2 - 1) * 0.5;
-        this.vz = (Math.random()*2 - 1) * 0.5;
-        // Flock parameters
-        this.maxSpeed = 3.0;
-        this.cohesionRange = 150;
-        this.separationRange = 50;
-        this.alignmentRange = 120;
-      }
-
-      update(planes) {
-        // Basic boid mechanics:
-        let alignment = {x:0, y:0, z:0, count:0};
-        let cohesion = {x:0, y:0, z:0, count:0};
-        let separation = {x:0, y:0, z:0, count:0};
-
-        for (const p of planes) {
-          if (p === this) continue;
-          let dx = p.x - this.x;
-          let dy = p.y - this.y;
-          let dz = p.z - this.z;
-          let distSq = dx*dx + dy*dy + dz*dz;
-          if (distSq === 0) continue;
-
-          let dist = Math.sqrt(distSq);
-          if (dist < this.alignmentRange) {
-            alignment.x += p.vx;
-            alignment.y += p.vy;
-            alignment.z += p.vz;
-            alignment.count++;
-          }
-          if (dist < this.cohesionRange) {
-            cohesion.x += p.x;
-            cohesion.y += p.y;
-            cohesion.z += p.z;
-            cohesion.count++;
-          }
-          if (dist < this.separationRange) {
-            separation.x += (this.x - p.x)/distSq;
-            separation.y += (this.y - p.y)/distSq;
-            separation.z += (this.z - p.z)/distSq;
-            separation.count++;
-          }
-        }
-
-        // Alignment
-        if (alignment.count > 0) {
-          alignment.x /= alignment.count;
-          alignment.y /= alignment.count;
-          alignment.z /= alignment.count;
-          this.vx += (alignment.x - this.vx) * 0.05;
-          this.vy += (alignment.y - this.vy) * 0.05;
-          this.vz += (alignment.z - this.vz) * 0.05;
-        }
-
-        // Cohesion
-        if (cohesion.count > 0) {
-          cohesion.x /= cohesion.count;
-          cohesion.y /= cohesion.count;
-          cohesion.z /= cohesion.count;
-          this.vx += (cohesion.x - this.x) * 0.001;
-          this.vy += (cohesion.y - this.y) * 0.001;
-          this.vz += (cohesion.z - this.z) * 0.001;
-        }
-
-        // Separation
-        if (separation.count > 0) {
-          separation.x /= separation.count;
-          separation.y /= separation.count;
-          separation.z /= separation.count;
-          this.vx += separation.x * 0.2;
-          this.vy += separation.y * 0.2;
-          this.vz += separation.z * 0.2;
-        }
-
-        // Limit speed
-        const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy + this.vz*this.vz);
-        if (speed > this.maxSpeed) {
-          this.vx = (this.vx / speed) * this.maxSpeed;
-          this.vy = (this.vy / speed) * this.maxSpeed;
-          this.vz = (this.vz / speed) * this.maxSpeed;
-        }
-
-        // Move
-        this.x += this.vx;
-        this.y += this.vy;
-        this.z += this.vz;
-
-        // Wrap around some bounding box (like a sky dome):
-        let bound = 800;
-        if (this.x > bound) this.x = -bound;
-        if (this.x < -bound) this.x = bound;
-        if (this.y > bound) this.y = -bound;
-        if (this.y < -bound) this.y = bound;
-        if (this.z > bound) this.z = -bound;
-        if (this.z < -bound) this.z = bound;
-      }
-
-      // Draw a stylized 2D projection “paper plane”
-      // We'll do a simple triangular shape with a flap line.
-      draw(ctx, width, height) {
-        // 3D to 2D projection
-        const perspective = 500;
-        const scale = perspective / (perspective + this.z);
-        const screenX = this.x * scale + width/2;
-        const screenY = -this.y * scale + height/2;
-
-        // The “plane” geometry
-        // Let’s use a small triangular shape, possibly flapping slightly
-        ctx.save();
-        ctx.translate(screenX, screenY);
-        ctx.rotate(Math.atan2(this.vy, this.vx)); // orientation based on vx, vy
-        const color = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillStyle = color;
-        ctx.strokeStyle = '#fff';
-
-        // Draw a small triangular “plane”
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-10, 5);
-        ctx.lineTo(-10, -5);
-        ctx.closePath();
-        ctx.fill();
-
-        // The “flap line” or “tail line”
-        ctx.beginPath();
-        ctx.moveTo(-10, -5);
-        ctx.lineTo(-10, 5);
-        ctx.stroke();
-
-        ctx.restore();
-      }
-    }
-
-    // We'll also create random "cloud blobs" as a background effect.
-    // These won't animate in a big way, just drifting horizontally.
-    class CloudBlob {
-      constructor() {
-        this.x = Math.random() * 1600 - 800;
-        this.y = Math.random() * 800 - 400;
-        this.z = 0; 
-        this.radius = 50 + Math.random() * 100;
-        this.speed = 0.2 + Math.random() * 0.3;
-        this.offsetY = Math.random() * 100;
-      }
-      update() {
-        this.x -= this.speed;
-        if (this.x < -1000) {
-          this.x = 1000;
-          this.y = Math.random() * 800 - 400;
-        }
-      }
-      draw(ctx, width, height) {
-        const perspective = 500;
-        const scale = perspective / (perspective + this.z);
-        const screenX = this.x * scale + width/2;
-        const screenY = this.y * scale + height/2;
-        
-        // Gradual, semi-transparent white blob
-        const rad = this.radius * scale;
-        const gradient = ctx.createRadialGradient(screenX, screenY, rad*0.2, screenX, screenY, rad);
-        gradient.addColorStop(0, 'rgba(255,255,255,0.6)');
-        gradient.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = gradient;
-
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, rad, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    let planes = [];
-    let clouds = [];
-    let ctx, w, h, canvas;
-
-    function initBackground() {
+    function initVRBackground() {
       canvas = document.getElementById('canv');
       ctx = canvas.getContext('2d');
       resizeCanvas();
 
-      // Create random planes
-      const planeCount = 40;
-      for (let i = 0; i < planeCount; i++) {
-        planes.push(new Plane(
-          Math.random()*1600 - 800,
-          Math.random()*800 - 400,
-          Math.random()*800 - 400
-        ));
-      }
-
-      // Create some drifting cloud blobs
-      for (let i = 0; i < 12; i++) {
-        clouds.push(new CloudBlob());
+      // Populate arcs that swirl inwards to the center
+      for (let i = 0; i < ARC_COUNT; i++) {
+        arcs.push({
+          radius: 100 + i * 20,
+          startAngle: Math.random() * Math.PI * 2,
+          speed: 0.002 + Math.random() * 0.003,
+          hue: 200 + Math.floor(Math.random() * 50),
+        });
       }
 
       animate();
@@ -565,28 +377,70 @@
       h = canvas.height = window.innerHeight;
     }
 
+    function drawVRHeadset(x, y) {
+      // Simple stylized VR headset silhouette
+      // We'll draw a rectangle with a curved top, a visor, etc.
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(1, -1); // flip vertically for coordinate convenience
+
+      ctx.fillStyle = 'rgba(80, 80, 200, 0.7)';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      // Outer shape
+      ctx.moveTo(-50, 0);
+      ctx.quadraticCurveTo(-80, 30, -90, 60);   // Left strap curve
+      ctx.lineTo(90, 60);                      // Top band
+      ctx.quadraticCurveTo(80, 30, 50, 0);     // Right strap curve
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Visor area
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.beginPath();
+      ctx.moveTo(-40, 10);
+      ctx.lineTo(40, 10);
+      ctx.lineTo(40, 30);
+      ctx.lineTo(-40, 30);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+
     function animate() {
       requestAnimationFrame(animate);
-      ctx.clearRect(0,0,w,h);
+      ctx.clearRect(0, 0, w, h);
 
-      // Draw clouds first, behind everything
-      for (let c of clouds) {
-        c.update();
-        c.draw(ctx, w, h);
+      // Draw swirl arcs that revolve around the center, giving a sense of signals
+      ctx.save();
+      ctx.translate(w/2, h/2);
+      ctx.scale(1, -1); // flip to a standard mathematical coordinate system
+      angle += 0.01;
+
+      for (let arc of arcs) {
+        arc.startAngle += arc.speed;
+        let endAngle = arc.startAngle + Math.PI/2;
+
+        ctx.beginPath();
+        ctx.arc(0, 0, arc.radius, arc.startAngle, endAngle);
+        ctx.strokeStyle = `hsla(${arc.hue}, 80%, 60%, 0.5)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
       }
 
-      // Update and draw planes (the boids)
-      for (let p of planes) {
-        p.update(planes);
-      }
-      for (let p of planes) {
-        p.draw(ctx, w, h);
-      }
+      // Draw VR headset silhouette at the center
+      drawVRHeadset(0, -10);
+
+      ctx.restore();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       initializePage();
-      initBackground();  // Initialize our new background code
+      initVRBackground();
     });
   </script>
 </body>
