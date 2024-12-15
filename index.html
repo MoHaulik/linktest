@@ -131,4 +131,463 @@
     .styled-button:hover:not(:active),
     .styled-button.active {
       transition-duration: 0.665s;
-      t
+      transform: scale(1.2);
+      box-shadow: 0 4px 8px -2px hsl(222deg 50% 20% / 50%),
+                  inset 0 0 0 transparent;
+    }
+
+    .styled-button:active {
+      transform: scale(1.1);
+      transition-duration: 0.665s;
+    }
+
+    .styled-button .shimmer {
+      position: absolute;
+      inset: -40px;
+      border-radius: inherit;
+      mask-image: conic-gradient(
+          from 0deg,
+          transparent 0%,
+          transparent 10%,
+          black 36%,
+          black 45%,
+          transparent 50%,
+          transparent 60%,
+          black 85%,
+          black 95%,
+          transparent 100%
+      );
+      mask-size: cover;
+      mix-blend-mode: plus-lighter;
+      animation: shimmer 1s linear infinite both;
+    }
+
+    .styled-button .shimmer::before,
+    .styled-button .shimmer::after {
+      transition: all 0.5s ease;
+      opacity: 0;
+      content: "";
+      border-radius: inherit;
+      position: absolute;
+      mix-blend-mode: color;
+      inset: 40px;
+      pointer-events: none;
+    }
+
+    .styled-button .shimmer::before {
+      box-shadow: 0 0 3px 2px hsl(222deg 20% 95%),
+                  0 0 7px 4px hsl(222deg 20% 80%),
+                  0 0 13px 4px hsl(222deg 50% 70%),
+                  0 0 25px 5px hsl(222deg 100% 70%);
+      z-index: -1;
+    }
+
+    .styled-button .shimmer::after {
+      box-shadow: inset 0 0 0 1px hsl(222deg 70% 95%),
+                  inset 0 0 2px 1px hsl(222deg 100% 80%),
+                  inset 0 0 5px 2px hsl(222deg 100% 70%);
+      z-index: 2;
+    }
+
+    .styled-button .text {
+      color: white;
+    }
+
+    @keyframes shimmer {
+      0% { --shimmer: 0deg; }
+      100% { --shimmer: 360deg; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
+</head>
+<body>
+  <!-- Canvas for dynamic sky + flying shapes -->
+  <canvas id="canv"></canvas>
+
+  <!-- Input and button UI -->
+  <div class="input-container">
+    <div class="drop-area" id="dropArea">
+      <input type="text" id="urlInput" placeholder="Type or drop a URL" autocomplete="off" />
+    </div>
+    <div class="suggestions" id="suggestions"></div>
+    <button id="openOnQuestButton" class="styled-button">
+      <span class="text">Open on Quest</span>
+      <div class="shimmer"></div>
+    </button>
+  </div>
+
+  <script>
+    /*****************************************
+     * LOGIC FOR THE URL INPUT AND LOCALSTORAGE
+     *****************************************/
+    const RECENT_URLS_KEY = 'recentUrls';
+
+    function loadRecentUrls() {
+      let urls = localStorage.getItem(RECENT_URLS_KEY);
+      if (urls) {
+        try {
+          urls = JSON.parse(urls);
+        } catch (e) {
+          urls = [];
+        }
+      } else {
+        urls = [];
+      }
+      return urls;
+    }
+
+    function saveRecentUrl(newUrl) {
+      let urls = loadRecentUrls();
+      // Remove if already exists
+      urls = urls.filter(u => u !== newUrl);
+      // Add to front
+      urls.unshift(newUrl);
+      // Keep only last 3
+      if (urls.length > 3) {
+        urls = urls.slice(0, 3);
+      }
+      localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(urls));
+    }
+
+    function sendLinkToQuest(linkUrl) {
+      let finalUrl = linkUrl.trim();
+      // Auto-add https:// if missing
+      if (!finalUrl.startsWith('https://')) {
+        finalUrl = 'https://' + finalUrl.replace(/^https?:\/\//, '');
+      }
+      const encodedUrl = encodeURIComponent(finalUrl);
+      const webLaunchEndpoint = `https://www.oculus.com/open_url/?url=${encodedUrl}`;
+      saveRecentUrl(finalUrl);
+      window.location.href = webLaunchEndpoint;
+    }
+
+    function isQuestHeadset() {
+      const parser = new UAParser();
+      const result = parser.getResult();
+      const browserName = result.browser.name || '';
+      const deviceModel = result.device.model || '';
+      const isOculusBrowser = browserName.includes('OculusBrowser');
+      const isQuestDevice = deviceModel.includes('Quest');
+      return isOculusBrowser || isQuestDevice;
+    }
+
+    function showSuggestions(filteredUrls) {
+      const suggestionsBox = document.getElementById('suggestions');
+      suggestionsBox.innerHTML = '';
+      if (filteredUrls.length > 0) {
+        filteredUrls.forEach(url => {
+          const div = document.createElement('div');
+          div.textContent = url.replace(/^https?:\/\//, '');
+          div.addEventListener('click', () => {
+            document.getElementById('urlInput').value = url.replace(/^https?:\/\//, '');
+            suggestionsBox.classList.remove('visible');
+          });
+          suggestionsBox.appendChild(div);
+        });
+        suggestionsBox.classList.add('visible');
+      } else {
+        suggestionsBox.classList.remove('visible');
+      }
+    }
+
+    function initializePage() {
+      const dropArea = document.getElementById('dropArea');
+      const urlInput = document.getElementById('urlInput');
+      const openOnQuestButton = document.getElementById('openOnQuestButton');
+      const suggestionsBox = document.getElementById('suggestions');
+
+      // Handle dragging over the drop area
+      dropArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropArea.classList.add('dragover');
+      });
+      dropArea.addEventListener('dragleave', function() {
+        dropArea.classList.remove('dragover');
+      });
+      dropArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+        const data = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+        if (data) {
+          urlInput.value = data.replace(/^https?:\/\//, '');
+        }
+      });
+
+      urlInput.addEventListener('input', () => {
+        const inputVal = urlInput.value.trim().toLowerCase();
+        const recentUrls = loadRecentUrls();
+        const filtered = recentUrls.filter(u => u.toLowerCase().includes(inputVal));
+        showSuggestions(filtered);
+      });
+
+      urlInput.addEventListener('blur', () => {
+        setTimeout(() => {
+          suggestionsBox.classList.remove('visible');
+        }, 200);
+      });
+
+      openOnQuestButton.addEventListener('click', function() {
+        const url = urlInput.value.trim();
+        if (url) {
+          sendLinkToQuest(url);
+        } else {
+          alert('Please enter or drop a valid URL.');
+        }
+      });
+
+      if (isQuestHeadset()) {
+        console.log('Page accessed from Meta Quest headset.');
+      }
+    }
+
+    // Force reload if page was restored from cache
+    window.onpageshow = function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+
+    /*****************************************
+     *  NEW CANVAS CODE: SKY + CLOUD BLOBS + "PAPER PLANES"
+     *****************************************/
+
+    // We'll create 'paper planes' with a simplified boid approach.
+    // The shapes and code are brand new, so it's ours.
+
+    class Plane {
+      constructor(x, y, z) {
+        // Position
+        this.x = x || 0;
+        this.y = y || 0;
+        this.z = z || 0;
+        // Velocity
+        this.vx = (Math.random()*2 - 1) * 0.5;
+        this.vy = (Math.random()*2 - 1) * 0.5;
+        this.vz = (Math.random()*2 - 1) * 0.5;
+        // Flock parameters
+        this.maxSpeed = 3.0;
+        this.cohesionRange = 150;
+        this.separationRange = 50;
+        this.alignmentRange = 120;
+      }
+
+      update(planes) {
+        // Basic boid mechanics:
+        let alignment = {x:0, y:0, z:0, count:0};
+        let cohesion = {x:0, y:0, z:0, count:0};
+        let separation = {x:0, y:0, z:0, count:0};
+
+        for (const p of planes) {
+          if (p === this) continue;
+          let dx = p.x - this.x;
+          let dy = p.y - this.y;
+          let dz = p.z - this.z;
+          let distSq = dx*dx + dy*dy + dz*dz;
+          if (distSq === 0) continue;
+
+          let dist = Math.sqrt(distSq);
+          if (dist < this.alignmentRange) {
+            alignment.x += p.vx;
+            alignment.y += p.vy;
+            alignment.z += p.vz;
+            alignment.count++;
+          }
+          if (dist < this.cohesionRange) {
+            cohesion.x += p.x;
+            cohesion.y += p.y;
+            cohesion.z += p.z;
+            cohesion.count++;
+          }
+          if (dist < this.separationRange) {
+            separation.x += (this.x - p.x)/distSq;
+            separation.y += (this.y - p.y)/distSq;
+            separation.z += (this.z - p.z)/distSq;
+            separation.count++;
+          }
+        }
+
+        // Alignment
+        if (alignment.count > 0) {
+          alignment.x /= alignment.count;
+          alignment.y /= alignment.count;
+          alignment.z /= alignment.count;
+          this.vx += (alignment.x - this.vx) * 0.05;
+          this.vy += (alignment.y - this.vy) * 0.05;
+          this.vz += (alignment.z - this.vz) * 0.05;
+        }
+
+        // Cohesion
+        if (cohesion.count > 0) {
+          cohesion.x /= cohesion.count;
+          cohesion.y /= cohesion.count;
+          cohesion.z /= cohesion.count;
+          this.vx += (cohesion.x - this.x) * 0.001;
+          this.vy += (cohesion.y - this.y) * 0.001;
+          this.vz += (cohesion.z - this.z) * 0.001;
+        }
+
+        // Separation
+        if (separation.count > 0) {
+          separation.x /= separation.count;
+          separation.y /= separation.count;
+          separation.z /= separation.count;
+          this.vx += separation.x * 0.2;
+          this.vy += separation.y * 0.2;
+          this.vz += separation.z * 0.2;
+        }
+
+        // Limit speed
+        const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy + this.vz*this.vz);
+        if (speed > this.maxSpeed) {
+          this.vx = (this.vx / speed) * this.maxSpeed;
+          this.vy = (this.vy / speed) * this.maxSpeed;
+          this.vz = (this.vz / speed) * this.maxSpeed;
+        }
+
+        // Move
+        this.x += this.vx;
+        this.y += this.vy;
+        this.z += this.vz;
+
+        // Wrap around some bounding box (like a sky dome):
+        let bound = 800;
+        if (this.x > bound) this.x = -bound;
+        if (this.x < -bound) this.x = bound;
+        if (this.y > bound) this.y = -bound;
+        if (this.y < -bound) this.y = bound;
+        if (this.z > bound) this.z = -bound;
+        if (this.z < -bound) this.z = bound;
+      }
+
+      // Draw a stylized 2D projection “paper plane”
+      // We'll do a simple triangular shape with a flap line.
+      draw(ctx, width, height) {
+        // 3D to 2D projection
+        const perspective = 500;
+        const scale = perspective / (perspective + this.z);
+        const screenX = this.x * scale + width/2;
+        const screenY = -this.y * scale + height/2;
+
+        // The “plane” geometry
+        // Let’s use a small triangular shape, possibly flapping slightly
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        ctx.rotate(Math.atan2(this.vy, this.vx)); // orientation based on vx, vy
+        const color = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillStyle = color;
+        ctx.strokeStyle = '#fff';
+
+        // Draw a small triangular “plane”
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-10, 5);
+        ctx.lineTo(-10, -5);
+        ctx.closePath();
+        ctx.fill();
+
+        // The “flap line” or “tail line”
+        ctx.beginPath();
+        ctx.moveTo(-10, -5);
+        ctx.lineTo(-10, 5);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    // We'll also create random "cloud blobs" as a background effect.
+    // These won't animate in a big way, just drifting horizontally.
+    class CloudBlob {
+      constructor() {
+        this.x = Math.random() * 1600 - 800;
+        this.y = Math.random() * 800 - 400;
+        this.z = 0; 
+        this.radius = 50 + Math.random() * 100;
+        this.speed = 0.2 + Math.random() * 0.3;
+        this.offsetY = Math.random() * 100;
+      }
+      update() {
+        this.x -= this.speed;
+        if (this.x < -1000) {
+          this.x = 1000;
+          this.y = Math.random() * 800 - 400;
+        }
+      }
+      draw(ctx, width, height) {
+        const perspective = 500;
+        const scale = perspective / (perspective + this.z);
+        const screenX = this.x * scale + width/2;
+        const screenY = this.y * scale + height/2;
+        
+        // Gradual, semi-transparent white blob
+        const rad = this.radius * scale;
+        const gradient = ctx.createRadialGradient(screenX, screenY, rad*0.2, screenX, screenY, rad);
+        gradient.addColorStop(0, 'rgba(255,255,255,0.6)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = gradient;
+
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    let planes = [];
+    let clouds = [];
+    let ctx, w, h, canvas;
+
+    function initBackground() {
+      canvas = document.getElementById('canv');
+      ctx = canvas.getContext('2d');
+      resizeCanvas();
+
+      // Create random planes
+      const planeCount = 40;
+      for (let i = 0; i < planeCount; i++) {
+        planes.push(new Plane(
+          Math.random()*1600 - 800,
+          Math.random()*800 - 400,
+          Math.random()*800 - 400
+        ));
+      }
+
+      // Create some drifting cloud blobs
+      for (let i = 0; i < 12; i++) {
+        clouds.push(new CloudBlob());
+      }
+
+      animate();
+      window.addEventListener('resize', resizeCanvas, false);
+    }
+
+    function resizeCanvas() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      ctx.clearRect(0,0,w,h);
+
+      // Draw clouds first, behind everything
+      for (let c of clouds) {
+        c.update();
+        c.draw(ctx, w, h);
+      }
+
+      // Update and draw planes (the boids)
+      for (let p of planes) {
+        p.update(planes);
+      }
+      for (let p of planes) {
+        p.draw(ctx, w, h);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initializePage();
+      initBackground();  // Initialize our new background code
+    });
+  </script>
+</body>
+</html>
