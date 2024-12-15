@@ -14,24 +14,29 @@
       width: 100%;
       min-height: 100%;
       overflow: hidden;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
       -webkit-user-drag: none;
+      background: #ffffff;
     }
 
-    /* ================================
-       SKY GRADIENT & VR SIGNAL THEME
-       ================================ */
+    /* =========================================
+       "Brave Apple" Inspired Canvas
+       ========================================= */
     canvas {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      /* A VR-themed background gradient: */
-      background: radial-gradient(circle at 50% 50%, #222 0%, #47476b 40%, #101026 100%);
+      /* Soft, fluid gradient reminiscent of modern Apple wallpapers */
+      background: linear-gradient(180deg,
+        rgba(255, 135, 105, 1) 0%,
+        rgba(251, 195, 154, 1) 40%,
+        rgba(217, 226, 255, 1) 100%
+      );
       z-index: 1;
     }
 
-    /* ================================
-       INPUT / BUTTON UI (unchanged)
-       ================================ */
+    /* =========================================
+       UI ELEMENTS (Light Apple-inspired style)
+       ========================================= */
     .input-container {
       position: absolute;
       top: 50%; left: 50%;
@@ -47,15 +52,16 @@
       width: 100%;
       height: 60px;
       border-radius: 30px;
-      background-color: rgba(255, 255, 255, 0.3);
+      background-color: rgba(255,255,255,0.25);
       border: none;
-      color: white;
+      color: #333;
       font-size: 18px;
       text-align: center;
       line-height: 60px;
-      backdrop-filter: blur(5px);
-      box-shadow: 0 2px 3px 1px hsl(222deg 50% 20% / 50%),
-                  inset 0 -10px 20px -10px hsla(180deg, 10%, 90%, 95%);
+      backdrop-filter: blur(10px);
+      box-shadow:
+        0 2px 3px 1px rgba(180,180,180,0.3),
+        inset 0 -10px 20px -10px rgba(255,255,255,0.9);
       margin-bottom: 20px;
       cursor: text;
       transition: all 1.33s ease;
@@ -65,8 +71,9 @@
     .drop-area:focus-within,
     .drop-area.dragover {
       transform: scale(1.03);
-      box-shadow: 0 4px 8px -2px hsl(222deg 50% 20% / 50%),
-                  inset 0 0 0 transparent;
+      box-shadow: 
+        0 4px 10px -2px rgba(180,180,180,0.4),
+        inset 0 0 0 transparent;
       transition-duration: 0.665s;
     }
 
@@ -77,7 +84,7 @@
       background: transparent;
       outline: none;
       text-align: center;
-      color: white;
+      color: #333;
       font-size: 18px;
       font-family: inherit;
     }
@@ -86,10 +93,10 @@
       position: absolute;
       top: 110px;
       width: 100%;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
       display: none;
       z-index: 9999;
     }
@@ -101,28 +108,29 @@
     .suggestions div {
       padding: 10px;
       font-size: 16px;
-      color: black;
+      color: #333;
       cursor: pointer;
     }
 
     .suggestions div:hover {
-      background: rgba(0,0,0,0.1);
+      background: rgba(0,0,0,0.05);
     }
 
     .styled-button {
       position: relative;
       padding: 10px 20px;
-      background-color: rgba(255, 255, 255, 0.3);
+      background-color: rgba(255,255,255,0.25);
       border: none;
       border-radius: 30px;
       font-size: 18px;
-      color: white;
+      color: #333;
       cursor: pointer;
-      backdrop-filter: blur(5px);
+      backdrop-filter: blur(10px);
       transition: all 1.33s ease;
       isolation: isolate;
-      box-shadow: 0 2px 3px 1px hsl(222deg 50% 20% / 50%),
-                  inset 0 -10px 20px -10px hsla(180deg, 10%, 90%, 95%);
+      box-shadow:
+        0 2px 3px 1px rgba(180,180,180,0.3),
+        inset 0 -10px 20px -10px rgba(255,255,255,0.9);
       transform: scale(1);
     }
 
@@ -130,8 +138,9 @@
     .styled-button.active {
       transition-duration: 0.665s;
       transform: scale(1.2);
-      box-shadow: 0 4px 8px -2px hsl(222deg 50% 20% / 50%),
-                  inset 0 0 0 transparent;
+      box-shadow: 
+        0 4px 10px -2px rgba(180,180,180,0.4),
+        inset 0 0 0 transparent;
     }
 
     .styled-button:active {
@@ -173,22 +182,22 @@
     }
 
     .styled-button .shimmer::before {
-      box-shadow: 0 0 3px 2px hsl(222deg 20% 95%),
-                  0 0 7px 4px hsl(222deg 20% 80%),
-                  0 0 13px 4px hsl(222deg 50% 70%),
-                  0 0 25px 5px hsl(222deg 100% 70%);
+      box-shadow: 0 0 3px 2px rgba(255,255,255,0.7),
+                  0 0 7px 4px rgba(255,255,255,0.5),
+                  0 0 13px 4px rgba(255,255,255,0.4),
+                  0 0 25px 5px rgba(255,255,255,0.4);
       z-index: -1;
     }
 
     .styled-button .shimmer::after {
-      box-shadow: inset 0 0 0 1px hsl(222deg 70% 95%),
-                  inset 0 0 2px 1px hsl(222deg 100% 80%),
-                  inset 0 0 5px 2px hsl(222deg 100% 70%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6),
+                  inset 0 0 2px 1px rgba(255,255,255,0.4),
+                  inset 0 0 5px 2px rgba(255,255,255,0.3);
       z-index: 2;
     }
 
     .styled-button .text {
-      color: white;
+      color: #333;
     }
 
     @keyframes shimmer {
@@ -199,7 +208,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.2/ua-parser.min.js"></script>
 </head>
 <body>
-  <!-- Main canvas for VR-themed background -->
+  <!-- Canvas for Apple-inspired gradient + flying triangular shapes -->
   <canvas id="canv"></canvas>
 
   <!-- Input and button UI -->
@@ -346,26 +355,201 @@
     };
 
     /*****************************************
-     * VR-THEMED BACKGROUND ANIMATION
+     *  APPLE-INSPIRED CANVAS WITH TRIANGLES
      *****************************************/
-    let canvas, ctx, w, h;
-    let arcs = [];
-    const ARC_COUNT = 25;
-    let angle = 0;
+    class TriangleBoid {
+      constructor(x, y, z) {
+        // Position
+        this.x = x || 0;
+        this.y = y || 0;
+        this.z = z || 0;
+        // Velocity
+        this.vx = (Math.random()*2 - 1) * 0.5;
+        this.vy = (Math.random()*2 - 1) * 0.5;
+        this.vz = (Math.random()*2 - 1) * 0.5;
+        // Boid parameters
+        this.maxSpeed = 3.5;
+        this.cohesionRange = 150;
+        this.separationRange = 50;
+        this.alignmentRange = 120;
+      }
 
-    function initVRBackground() {
+      update(boids) {
+        let alignment = {x:0, y:0, z:0, count:0};
+        let cohesion = {x:0, y:0, z:0, count:0};
+        let separation = {x:0, y:0, z:0, count:0};
+
+        for (const b of boids) {
+          if (b === this) continue;
+          let dx = b.x - this.x;
+          let dy = b.y - this.y;
+          let dz = b.z - this.z;
+          let distSq = dx*dx + dy*dy + dz*dz;
+          if (distSq === 0) continue;
+
+          let dist = Math.sqrt(distSq);
+          if (dist < this.alignmentRange) {
+            alignment.x += b.vx;
+            alignment.y += b.vy;
+            alignment.z += b.vz;
+            alignment.count++;
+          }
+          if (dist < this.cohesionRange) {
+            cohesion.x += b.x;
+            cohesion.y += b.y;
+            cohesion.z += b.z;
+            cohesion.count++;
+          }
+          if (dist < this.separationRange) {
+            separation.x += (this.x - b.x)/distSq;
+            separation.y += (this.y - b.y)/distSq;
+            separation.z += (this.z - b.z)/distSq;
+            separation.count++;
+          }
+        }
+
+        // Alignment
+        if (alignment.count > 0) {
+          alignment.x /= alignment.count;
+          alignment.y /= alignment.count;
+          alignment.z /= alignment.count;
+          this.vx += (alignment.x - this.vx) * 0.05;
+          this.vy += (alignment.y - this.vy) * 0.05;
+          this.vz += (alignment.z - this.vz) * 0.05;
+        }
+
+        // Cohesion
+        if (cohesion.count > 0) {
+          cohesion.x /= cohesion.count;
+          cohesion.y /= cohesion.count;
+          cohesion.z /= cohesion.count;
+          this.vx += (cohesion.x - this.x) * 0.001;
+          this.vy += (cohesion.y - this.y) * 0.001;
+          this.vz += (cohesion.z - this.z) * 0.001;
+        }
+
+        // Separation
+        if (separation.count > 0) {
+          separation.x /= separation.count;
+          separation.y /= separation.count;
+          separation.z /= separation.count;
+          this.vx += separation.x * 0.25;
+          this.vy += separation.y * 0.25;
+          this.vz += separation.z * 0.25;
+        }
+
+        // Limit speed
+        const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy + this.vz*this.vz);
+        if (speed > this.maxSpeed) {
+          this.vx = (this.vx / speed) * this.maxSpeed;
+          this.vy = (this.vy / speed) * this.maxSpeed;
+          this.vz = (this.vz / speed) * this.maxSpeed;
+        }
+
+        // Move
+        this.x += this.vx;
+        this.y += this.vy;
+        this.z += this.vz;
+
+        // Wrap around bounding box
+        let bound = 800;
+        if (this.x > bound) this.x = -bound;
+        if (this.x < -bound) this.x = bound;
+        if (this.y > bound) this.y = -bound;
+        if (this.y < -bound) this.y = bound;
+        if (this.z > bound) this.z = -bound;
+        if (this.z < -bound) this.z = bound;
+      }
+
+      // Draw triangular shape with Apple-like subtle glass effect
+      draw(ctx, width, height) {
+        const perspective = 500;
+        const scale = perspective / (perspective + this.z);
+        const screenX = this.x * scale + width/2;
+        const screenY = -this.y * scale + height/2;
+
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        ctx.rotate(Math.atan2(this.vy, this.vx)); // face direction
+
+        // Gradient fill with white edges, slight transparency
+        let gradient = ctx.createLinearGradient(0, -10, 0, 10);
+        gradient.addColorStop(0, 'rgba(255,255,255,0.7)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0.4)');
+
+        ctx.fillStyle = gradient;
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.moveTo(10, 0);    // Tip
+        ctx.lineTo(-8, 6);    // Left
+        ctx.lineTo(-8, -6);   // Right
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Soft drop shadow for depth
+        ctx.shadowColor = 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = 8;
+        ctx.restore();
+      }
+    }
+
+    // Optional subtle “cloud ellipse” in the background
+    class SoftCloud {
+      constructor() {
+        this.x = Math.random() * 1600 - 800;
+        this.y = Math.random() * 800 - 400;
+        this.z = 0; 
+        this.radiusX = 80 + Math.random() * 100;
+        this.radiusY = 40 + Math.random() * 60;
+        this.speed = 0.1 + Math.random() * 0.2;
+      }
+      update() {
+        this.x -= this.speed;
+        if (this.x < -900) {
+          this.x = 900;
+          this.y = Math.random() * 800 - 400;
+        }
+      }
+      draw(ctx, width, height) {
+        const perspective = 500;
+        const scale = perspective / (perspective + this.z);
+        const screenX = this.x * scale + width/2;
+        const screenY = this.y * scale + height/2;
+        
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.beginPath();
+        ctx.ellipse(screenX, screenY, this.radiusX*scale, this.radiusY*scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    let boids = [];
+    let clouds = [];
+    let ctx, w, h, canvas;
+
+    function initBackground() {
       canvas = document.getElementById('canv');
       ctx = canvas.getContext('2d');
       resizeCanvas();
 
-      // Populate arcs that swirl inwards to the center
-      for (let i = 0; i < ARC_COUNT; i++) {
-        arcs.push({
-          radius: 100 + i * 20,
-          startAngle: Math.random() * Math.PI * 2,
-          speed: 0.002 + Math.random() * 0.003,
-          hue: 200 + Math.floor(Math.random() * 50),
-        });
+      // Create boids
+      const count = 40;
+      for (let i = 0; i < count; i++) {
+        boids.push(new TriangleBoid(
+          Math.random()*1600 - 800,
+          Math.random()*800 - 400,
+          Math.random()*800 - 400
+        ));
+      }
+
+      // Create some drifting soft cloud ellipses
+      for (let i = 0; i < 12; i++) {
+        clouds.push(new SoftCloud());
       }
 
       animate();
@@ -377,70 +561,28 @@
       h = canvas.height = window.innerHeight;
     }
 
-    function drawVRHeadset(x, y) {
-      // Simple stylized VR headset silhouette
-      // We'll draw a rectangle with a curved top, a visor, etc.
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(1, -1); // flip vertically for coordinate convenience
-
-      ctx.fillStyle = 'rgba(80, 80, 200, 0.7)';
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-
-      ctx.beginPath();
-      // Outer shape
-      ctx.moveTo(-50, 0);
-      ctx.quadraticCurveTo(-80, 30, -90, 60);   // Left strap curve
-      ctx.lineTo(90, 60);                      // Top band
-      ctx.quadraticCurveTo(80, 30, 50, 0);     // Right strap curve
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Visor area
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.beginPath();
-      ctx.moveTo(-40, 10);
-      ctx.lineTo(40, 10);
-      ctx.lineTo(40, 30);
-      ctx.lineTo(-40, 30);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.restore();
-    }
-
     function animate() {
       requestAnimationFrame(animate);
-      ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0,0,w,h);
 
-      // Draw swirl arcs that revolve around the center, giving a sense of signals
-      ctx.save();
-      ctx.translate(w/2, h/2);
-      ctx.scale(1, -1); // flip to a standard mathematical coordinate system
-      angle += 0.01;
-
-      for (let arc of arcs) {
-        arc.startAngle += arc.speed;
-        let endAngle = arc.startAngle + Math.PI/2;
-
-        ctx.beginPath();
-        ctx.arc(0, 0, arc.radius, arc.startAngle, endAngle);
-        ctx.strokeStyle = `hsla(${arc.hue}, 80%, 60%, 0.5)`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
+      // Draw soft clouds first
+      for (let c of clouds) {
+        c.update();
+        c.draw(ctx, w, h);
       }
 
-      // Draw VR headset silhouette at the center
-      drawVRHeadset(0, -10);
-
-      ctx.restore();
+      // Update and draw boids
+      for (let b of boids) {
+        b.update(boids);
+      }
+      for (let b of boids) {
+        b.draw(ctx, w, h);
+      }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       initializePage();
-      initVRBackground();
+      initBackground();
     });
   </script>
 </body>
